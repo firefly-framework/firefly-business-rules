@@ -12,6 +12,29 @@
 #  You should have received a copy of the GNU General Public License along with Firefly. If not, see
 #  <http://www.gnu.org/licenses/>.
 
-from .command import *
-from .input import *
-from .rule_set import *
+import os
+
+import pytest
+
+os.environ['CONTEXT'] = 'firefly_business_rules'
+
+
+@pytest.fixture(scope="session")
+def config():
+    return {
+        'contexts': {
+            'firefly_business_rules': {
+                'storage': {
+                    'services': {
+                        'rdb': {
+                            'connection': {
+                                'driver': 'sqlite',
+                                'host': ':memory:'
+                            }
+                        },
+                    },
+                    'default': 'rdb',
+                },
+            },
+        }
+    }

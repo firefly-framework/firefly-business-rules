@@ -13,3 +13,4 @@
 #  <http://www.gnu.org/licenses/>.
 
 from .container import Container
+from .service import *

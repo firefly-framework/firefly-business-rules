@@ -22,5 +22,5 @@ from ..entity.rule_set import RuleSet
 
 class RulesEngine(ABC):
     @abstractmethod
-    def evaluate_rule_set(self, rule_set: RuleSet, input_: Input):
+    def evaluate_rule_set(self, rule_set: RuleSet, data: dict, stop_on_first_trigger: bool = True):
         pass

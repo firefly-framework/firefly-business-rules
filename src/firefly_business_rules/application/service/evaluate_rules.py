@@ -12,6 +12,17 @@
 #  You should have received a copy of the GNU General Public License along with Firefly. If not, see
 #  <http://www.gnu.org/licenses/>.
 
-from .command import *
-from .input import *
-from .rule_set import *
+from __future__ import annotations
+
+import firefly as ff
+import firefly_business_rules.domain as domain
+
+
+@ff.command_handler()
+class EvaluateRules(ff.ApplicationService):
+    _registry: ff.Registry = None
+    _engine: domain.RulesEngine = None
+
+    def __call__(self, name: str, data: dict, stop_on_first_trigger: bool = False, **kwargs):
+        for rule in list(self._registry(domain.RuleSet).filter(lambda rs: rs.name == name)):
+            self._engine.evaluate_rule_set(rule, data, stop_on_first_trigger=stop_on_first_trigger)

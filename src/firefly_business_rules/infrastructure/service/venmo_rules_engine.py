@@ -14,18 +14,35 @@
 
 from __future__ import annotations
 
+from pprint import pprint
+from typing import List, Callable
+
+import business_rules.actions as bra
 import business_rules.variables as brv
+import firefly as ff
+from business_rules import run_all
+from business_rules.fields import FIELD_SELECT, FIELD_TEXT
 
 import firefly_business_rules.domain as domain
 from firefly_business_rules.domain.entity.input import Input
 from firefly_business_rules.domain.entity.rule_set import RuleSet
 
 
-class VenmoRulesEngine(domain.RulesEngine):
+class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
     _variable_objects: dict = {}
+    _action_object: type = None
+    _rule_sets: dict = {}
 
-    def evaluate_rule_set(self, rule_set: RuleSet, input_: Input):
-        pass
+    def evaluate_rule_set(self, rule_set: RuleSet, data: dict, stop_on_first_trigger: bool = True):
+        variables = self._build_variables_object(rule_set.input)
+        actions = self._build_action_object()
+
+        run_all(
+            rule_list=[self._generate_rules(rule_set)],
+            defined_variables=variables(data),
+            defined_actions=actions(data),
+            stop_on_first_trigger=stop_on_first_trigger
+        )
 
     def _build_variables_object(self, input_: Input):
         if input_.id in self._variable_objects:
@@ -34,23 +51,83 @@ class VenmoRulesEngine(domain.RulesEngine):
         class Variables(brv.BaseVariables):
             def __init__(self, data: dict):
                 self.data = data
+        Variables.__name__ = input_.name
 
         for variable in input_.variables:
-            def var(self):
-                return self.data[variable.name]
             if variable.type == 'string':
-                var = brv.string_rule_variable(var)
+                self._add_property_getter(Variables, variable.name, brv.string_rule_variable)
             elif variable.type == 'number':
-                var = brv.numeric_rule_variable(var)
+                self._add_property_getter(Variables, variable.name, brv.numeric_rule_variable)
             elif variable.type == 'boolean':
-                var = brv.boolean_rule_variable(var)
+                self._add_property_getter(Variables, variable.name, brv.boolean_rule_variable)
             elif variable.type == 'select':
-                var = brv.select_rule_variable(var, options=variable.options)
+                self._add_property_getter(Variables, variable.name, brv.select_rule_variable)
             elif variable.type == 'select-multiple':
-                var = brv.select_multiple_rule_variable(var, options=variable.options)
-
-            setattr(Variables, variable.name, var)
+                self._add_property_getter(Variables, variable.name, brv.select_multiple_rule_variable, variable.options)
 
         self._variable_objects[input_.id] = Variables
 
         return Variables
+
+    @staticmethod
+    def _add_property_getter(cls, name: str, variable_type: Callable, options: list = None):
+        def inner(self):
+            return self.data[name]
+        inner.__name__ = name
+        if options is not None:
+            setattr(cls, name, variable_type(inner, options=options))
+        else:
+            setattr(cls, name, variable_type(inner))
+
+    def _build_action_object(self):
+        if self._action_object is not None:
+            return self._action_object
+
+        class Actions(bra.BaseActions):
+            _system_bus: ff.SystemBus = None
+
+            def __init__(self, data: dict):
+                self.data = data
+
+            @bra.rule_action(params={'command': FIELD_TEXT})
+            def invoke_command(self, command: str):
+                self._system_bus.invoke(command, self.data)
+
+        Actions._system_bus = self._system_bus
+        self._action_object = Actions
+
+        return Actions
+
+    def _generate_rules(self, rule_set: domain.RuleSet):
+        if rule_set.id in self._rule_sets:
+            return self._rule_sets[rule_set.id]
+
+        ret = {'conditions': self._do_generate_rules(rule_set.conditions), 'actions': []}
+        for cmd in rule_set.commands:
+            name = f'{cmd.context}.{cmd.name}'
+            ret['actions'].append({
+                'name': 'invoke_command',
+                'params': {
+                    'command': name
+                }
+            })
+
+        self._rule_sets[rule_set.id] = ret
+
+        return ret
+
+    def _do_generate_rules(self, conditions: domain.ConditionSet):
+        ret = {}
+
+        key = 'any'
+        if conditions.all is True:
+            key = 'all'
+        ret[key] = []
+
+        for condition in conditions.conditions:
+            if isinstance(condition, domain.ConditionSet):
+                ret[key].append(self._do_generate_rules(condition))
+            else:
+                ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': condition.value})
+
+        return ret
