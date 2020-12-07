@@ -11,12 +11,13 @@
 #
 #  You should have received a copy of the GNU General Public License along with Firefly. If not, see
 #  <http://www.gnu.org/licenses/>.
+
 import json
-from pprint import pprint
+
+import pytest
 
 import firefly_business_rules.domain as domain
 import firefly_business_rules.infrastructure as infra
-import pytest
 
 triggered = {}
 
@@ -45,7 +46,7 @@ def test_convert_rule_set(engine: infra.VenmoRulesEngine, rule_set, transport):
     assert triggered['a'] is True
 
 
-async def test_api(client, transport, registry):
+async def test_api(client, transport, system_bus):
     transport.register_handler('accounting.RecordNewSale', trigger('a'))
 
     await client.post('/firefly-business-rules/rule-sets', data=json.dumps({
@@ -60,7 +61,7 @@ async def test_api(client, transport, registry):
         'scopes': ['firefly_business_rules.RuleSet.write'],
     }))
 
-    await client.post('/firefly-business-rules/evaluate-rules', data=json.dumps({
+    system_bus.invoke('firefly_business_rules.EvaluateRules', {
         'name': 'My Test Rule Set',
         'data': {
             'id': 'abc123',
@@ -68,7 +69,7 @@ async def test_api(client, transport, registry):
             'price': 99.99,
             'on_sale': False,
         }
-    }))
+    })
 
     assert triggered['a'] is True
 
