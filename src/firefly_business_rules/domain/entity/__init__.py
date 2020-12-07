@@ -13,5 +13,4 @@
 #  <http://www.gnu.org/licenses/>.
 
 from .command import *
-from .input import *
 from .rule_set import *

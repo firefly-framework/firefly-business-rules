@@ -33,6 +33,7 @@ setuptools.setup(
     },
     install_requires=[
         'firefly-dependency-injection>=0.1',
+        'firefly-framework>=1.1.12',
     ],
     packages=setuptools.PEP420PackageFinder.find('src'),
     package_dir={'': 'src'},

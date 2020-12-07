@@ -14,11 +14,13 @@
 
 from __future__ import annotations
 
+from pprint import pprint
+
 import firefly as ff
 import firefly_business_rules.domain as domain
 
 
-@ff.command_handler()
+@ff.rest('/evaluate-rules', method='POST')
 class EvaluateRules(ff.ApplicationService):
     _registry: ff.Registry = None
     _engine: domain.RulesEngine = None

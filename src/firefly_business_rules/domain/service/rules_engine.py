@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ..entity.input import Input
 from ..entity.rule_set import RuleSet
 
 

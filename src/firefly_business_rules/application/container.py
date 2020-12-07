@@ -15,7 +15,9 @@
 from __future__ import annotations
 
 import firefly_di as di
+import firefly_business_rules.domain as domain
+import firefly_business_rules.infrastructure as infra
 
 
 class Container(di.Container):
-    pass
+    rules_engine: domain.RulesEngine = infra.VenmoRulesEngine

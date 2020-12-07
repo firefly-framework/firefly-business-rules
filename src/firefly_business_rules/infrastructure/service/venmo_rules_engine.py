@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Callable
 
 import business_rules.actions as bra
@@ -23,7 +24,6 @@ from business_rules import run_all
 from business_rules.fields import FIELD_TEXT
 
 import firefly_business_rules.domain as domain
-from firefly_business_rules.domain.entity.input import Input
 from firefly_business_rules.domain.entity.rule_set import RuleSet
 
 
@@ -33,7 +33,7 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
     _rule_sets: dict = {}
 
     def evaluate_rule_set(self, rule_set: RuleSet, data: dict, stop_on_first_trigger: bool = True):
-        variables = self._build_variables_object(rule_set.input)
+        variables = self._build_variables_object(data)
         actions = self._build_action_object()
 
         run_all(
@@ -43,28 +43,24 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
             stop_on_first_trigger=stop_on_first_trigger
         )
 
-    def _build_variables_object(self, input_: Input):
-        if input_.id in self._variable_objects:
-            return self._variable_objects[input_.id]
+    def _build_variables_object(self, input_data: dict):
+        key = json.dumps(list(input_data.keys()))
+        if key in self._variable_objects:
+            return self._variable_objects[key]
 
         class Variables(brv.BaseVariables):
             def __init__(self, data: dict):
                 self.data = data
-        Variables.__name__ = input_.name
 
-        for variable in input_.variables:
-            if variable.type == 'string':
-                self._add_property_getter(Variables, variable.name, brv.string_rule_variable)
-            elif variable.type == 'number':
-                self._add_property_getter(Variables, variable.name, brv.numeric_rule_variable)
-            elif variable.type == 'boolean':
-                self._add_property_getter(Variables, variable.name, brv.boolean_rule_variable)
-            elif variable.type == 'select':
-                self._add_property_getter(Variables, variable.name, brv.select_rule_variable)
-            elif variable.type == 'select-multiple':
-                self._add_property_getter(Variables, variable.name, brv.select_multiple_rule_variable, variable.options)
+        for key, variable in input_data.items():
+            if isinstance(variable, (int, float)):
+                self._add_property_getter(Variables, key, brv.numeric_rule_variable)
+            elif isinstance(variable, bool):
+                self._add_property_getter(Variables, key, brv.boolean_rule_variable)
+            else:
+                self._add_property_getter(Variables, key, brv.string_rule_variable)
 
-        self._variable_objects[input_.id] = Variables
+        self._variable_objects[key] = Variables
 
         return Variables
 

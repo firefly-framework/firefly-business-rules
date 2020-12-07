@@ -30,7 +30,6 @@ from typing import List, Union
 
 import firefly as ff
 
-from .input import Input
 from .command import Command
 
 
@@ -55,5 +54,4 @@ class ConditionSet(ff.ValueObject):
 class RuleSet(ff.AggregateRoot):
     id: str = ff.id_()
     name: str = ff.optional(index=True)
-    input: Input = ff.required()
     conditions: List[ConditionSet] = ff.required()

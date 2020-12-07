@@ -11,23 +11,30 @@
 #
 #  You should have received a copy of the GNU General Public License along with Firefly. If not, see
 #  <http://www.gnu.org/licenses/>.
+import json
+from pprint import pprint
 
 import firefly_business_rules.domain as domain
 import firefly_business_rules.infrastructure as infra
 import pytest
 
-triggered = False
+triggered = {}
+
+
+def trigger(x):
+    global triggered
+
+    triggered[x] = False
+
+    def inner(y):
+        global triggered
+        triggered[y] = True
+
+    return lambda z: inner(x)
 
 
 def test_convert_rule_set(engine: infra.VenmoRulesEngine, rule_set, transport):
-    global triggered
-    triggered = False
-
-    def trigger(x):
-        global triggered
-        triggered = True
-
-    transport.register_handler('accounting.RecordNewSale', trigger)
+    transport.register_handler('accounting.RecordNewSale', trigger('a'))
     engine.evaluate_rule_set(rule_set, {
         'id': 'abc123',
         'sales_code': 1,
@@ -35,7 +42,35 @@ def test_convert_rule_set(engine: infra.VenmoRulesEngine, rule_set, transport):
         'on_sale': False,
     })
 
-    assert triggered is True
+    assert triggered['a'] is True
+
+
+async def test_api(client, transport, registry):
+    transport.register_handler('accounting.RecordNewSale', trigger('a'))
+
+    await client.post('/firefly-business-rules/rule-sets', data=json.dumps({
+        'name': 'My Test Rule Set',
+        'conditions': [{
+            'all': True,
+            'conditions': [
+                {'name': 'id', 'operator': 'equal_to', 'value': 'abc123'},
+            ],
+            'commands': [{'context': 'accounting', 'name': 'RecordNewSale'}]
+        }],
+        'scopes': ['firefly_business_rules.RuleSet.write'],
+    }))
+
+    await client.post('/firefly-business-rules/evaluate-rules', data=json.dumps({
+        'name': 'My Test Rule Set',
+        'data': {
+            'id': 'abc123',
+            'sales_code': 1,
+            'price': 99.99,
+            'on_sale': False,
+        }
+    }))
+
+    assert triggered['a'] is True
 
 
 @pytest.fixture()
@@ -47,15 +82,6 @@ def engine(container):
 def rule_set():
     return domain.RuleSet(
         name='Test Rules',
-        input=domain.Input(
-            name='sales.WidgetUpdated',
-            variables=[
-                domain.Variable(name='id', type='string'),
-                domain.Variable(name='sales_code', type='number'),
-                domain.Variable(name='price', type='number'),
-                domain.Variable(name='on_sale', type='boolean'),
-            ]
-        ),
         conditions=[
             domain.ConditionSet(
                 all=True,
