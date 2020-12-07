@@ -14,14 +14,13 @@
 
 from __future__ import annotations
 
-from pprint import pprint
-from typing import List, Callable
+from typing import Callable
 
 import business_rules.actions as bra
 import business_rules.variables as brv
 import firefly as ff
 from business_rules import run_all
-from business_rules.fields import FIELD_SELECT, FIELD_TEXT
+from business_rules.fields import FIELD_TEXT
 
 import firefly_business_rules.domain as domain
 from firefly_business_rules.domain.entity.input import Input
@@ -38,7 +37,7 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
         actions = self._build_action_object()
 
         run_all(
-            rule_list=[self._generate_rules(rule_set)],
+            rule_list=self._generate_rules(rule_set),
             defined_variables=variables(data),
             defined_actions=actions(data),
             stop_on_first_trigger=stop_on_first_trigger
@@ -102,15 +101,19 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
         if rule_set.id in self._rule_sets:
             return self._rule_sets[rule_set.id]
 
-        ret = {'conditions': self._do_generate_rules(rule_set.conditions), 'actions': []}
-        for cmd in rule_set.commands:
-            name = f'{cmd.context}.{cmd.name}'
-            ret['actions'].append({
-                'name': 'invoke_command',
-                'params': {
-                    'command': name
-                }
-            })
+        ret = []
+
+        for conditions in rule_set.conditions:
+            x = {'conditions': self._do_generate_rules(conditions), 'actions': []}
+            for cmd in conditions.commands:
+                name = f'{cmd.context}.{cmd.name}'
+                x['actions'].append({
+                    'name': 'invoke_command',
+                    'params': {
+                        'command': name
+                    }
+                })
+            ret.append(x)
 
         self._rule_sets[rule_set.id] = ret
 

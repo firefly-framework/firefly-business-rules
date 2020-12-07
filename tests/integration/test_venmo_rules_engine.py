@@ -56,13 +56,15 @@ def rule_set():
                 domain.Variable(name='on_sale', type='boolean'),
             ]
         ),
-        conditions=domain.ConditionSet(
-            all=True,
-            conditions=[
-                domain.Condition(name='id', operator='equal_to', value='abc123')
-            ]
-        ),
-        commands=[
-            domain.Command(context='accounting', name='RecordNewSale'),
-        ]
+        conditions=[
+            domain.ConditionSet(
+                all=True,
+                conditions=[
+                    domain.Condition(name='id', operator='equal_to', value='abc123')
+                ],
+                commands=[
+                    domain.Command(context='accounting', name='RecordNewSale'),
+                ]
+            )
+        ],
     )

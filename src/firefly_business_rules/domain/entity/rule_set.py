@@ -48,6 +48,7 @@ class Condition(ff.ValueObject):
 class ConditionSet(ff.ValueObject):
     all: bool = ff.optional(default=True)
     conditions: List[Union[Condition, ConditionSet]] = ff.list_()
+    commands: List[Command] = ff.list_()
 
 
 @ff.rest.crud()
@@ -55,5 +56,4 @@ class RuleSet(ff.AggregateRoot):
     id: str = ff.id_()
     name: str = ff.optional(index=True)
     input: Input = ff.required()
-    conditions: ConditionSet = ff.required()
-    commands: List[Command] = ff.list_()
+    conditions: List[ConditionSet] = ff.required()
