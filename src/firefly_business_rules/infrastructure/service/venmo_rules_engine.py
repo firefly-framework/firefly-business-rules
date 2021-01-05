@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import json
-from typing import Callable
+from typing import Callable, Union
 
 import business_rules.actions as bra
 import business_rules.variables as brv
@@ -99,14 +99,13 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
 
         ret = []
 
-        for conditions in rule_set.conditions:
-            x = {'conditions': self._do_generate_rules(conditions), 'actions': []}
-            for cmd in conditions.commands:
-                name = f'{cmd.context}.{cmd.name}'
+        for rule in rule_set.rules:
+            x = {'conditions': self._do_generate_rules(rule.conditions), 'actions': []}
+            for cmd in rule.commands:
                 x['actions'].append({
                     'name': 'invoke_command',
                     'params': {
-                        'command': name
+                        'command': cmd.name
                     }
                 })
             ret.append(x)
@@ -124,9 +123,8 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
         ret[key] = []
 
         for condition in conditions.conditions:
-            if isinstance(condition, domain.ConditionSet):
-                ret[key].append(self._do_generate_rules(condition))
-            else:
-                ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': condition.value})
+            ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': condition.value})
+        for condition in conditions.sub_conditions:
+            ret[key].append(self._do_generate_rules(condition))
 
         return ret

@@ -30,8 +30,6 @@ from typing import List, Union
 
 import firefly as ff
 
-from .command import Command
-
 
 class Condition(ff.ValueObject):
     name: str = ff.required()
@@ -44,9 +42,20 @@ class Condition(ff.ValueObject):
     value: str = ff.required()
 
 
+class Command(ff.ValueObject):
+    id: str = ff.id_()
+    name: str = ff.required(index=True)
+    params: dict = ff.dict_()
+
+
 class ConditionSet(ff.ValueObject):
     all: bool = ff.optional(default=True)
-    conditions: List[Union[Condition, ConditionSet]] = ff.list_()
+    conditions: List[Condition] = ff.list_()
+    sub_conditions: List[ConditionSet] = ff.list_()
+
+
+class Rule(ff.ValueObject):
+    conditions: ConditionSet = ff.required()
     commands: List[Command] = ff.list_()
 
 
@@ -54,4 +63,4 @@ class ConditionSet(ff.ValueObject):
 class RuleSet(ff.AggregateRoot):
     id: str = ff.id_()
     name: str = ff.optional(index=True)
-    conditions: List[ConditionSet] = ff.required()
+    rules: List[Rule] = ff.required()

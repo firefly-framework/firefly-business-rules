@@ -51,12 +51,14 @@ async def test_api(client, transport, system_bus):
 
     await client.post('/firefly-business-rules/rule-sets', data=json.dumps({
         'name': 'My Test Rule Set',
-        'conditions': [{
-            'all': True,
-            'conditions': [
-                {'name': 'id', 'operator': 'equal_to', 'value': 'abc123'},
-            ],
-            'commands': [{'context': 'accounting', 'name': 'RecordNewSale'}]
+        'rules': [{
+            'conditions': {
+                'all': True,
+                'conditions': [
+                    {'name': 'id', 'operator': 'equal_to', 'value': 'abc123'},
+                ],
+            },
+            'commands': [{'name': 'accounting.RecordNewSale'}]
         }],
         'scopes': ['firefly_business_rules.RuleSet.write'],
     }))
@@ -83,15 +85,17 @@ def engine(container):
 def rule_set():
     return domain.RuleSet(
         name='Test Rules',
-        conditions=[
-            domain.ConditionSet(
-                all=True,
-                conditions=[
-                    domain.Condition(name='id', operator='equal_to', value='abc123')
-                ],
+        rules=[
+            domain.Rule(
+                conditions=domain.ConditionSet(
+                    all=True,
+                    conditions=[
+                        domain.Condition(name='id', operator='equal_to', value='abc123')
+                    ]
+                ),
                 commands=[
-                    domain.Command(context='accounting', name='RecordNewSale'),
+                    domain.Command(name='accounting.RecordNewSale'),
                 ]
             )
-        ],
+        ]
     )
