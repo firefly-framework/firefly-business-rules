@@ -22,7 +22,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='firefly-business-rules',
-    version='0.1.3',
+    version='0.1.4',
     author="",
     author_email="",
     description="Put project description here.",

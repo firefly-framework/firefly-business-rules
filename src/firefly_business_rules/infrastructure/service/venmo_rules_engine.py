@@ -123,7 +123,19 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
         ret[key] = []
 
         for condition in conditions.conditions:
-            ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': condition.value})
+            value = condition.value
+            try:
+                if value.isnumeric():
+                    value = int(value)
+            except AttributeError:
+                pass
+
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+
+            ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': value})
         for condition in conditions.sub_conditions:
             ret[key].append(self._do_generate_rules(condition))
 
