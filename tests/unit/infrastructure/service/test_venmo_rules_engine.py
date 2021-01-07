@@ -11,7 +11,6 @@
 #
 #  You should have received a copy of the GNU General Public License along with Firefly. If not, see
 #  <http://www.gnu.org/licenses/>.
-import json
 
 import pytest
 from firefly_business_rules.infrastructure import VenmoRulesEngine
@@ -25,10 +24,16 @@ def test_numbers(sut: VenmoRulesEngine, rules):
         'numeric_value': 10000,
     })
 
+    assert sut._system_bus.invoke.call_count == 1
+    args, _ = sut._system_bus.invoke.call_args
+    assert args[1]['custom'] == 'param'
+
 
 @pytest.fixture()
 def sut():
-    return Container().mock(VenmoRulesEngine)
+    sut = Container().mock(VenmoRulesEngine)
+    sut._action_object = None
+    return sut
 
 
 @pytest.fixture()
