@@ -22,7 +22,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='firefly-business-rules',
-    version='0.1.2',
+    version='0.1.3',
     author="",
     author_email="",
     description="Put project description here.",
@@ -32,6 +32,7 @@ setuptools.setup(
         'console_scripts': ['firefly=firefly.presentation.cli:main']
     },
     install_requires=[
+        'business-rules>=1.0.1',
         'firefly-dependency-injection>=0.1',
         'firefly-framework>=1.1.12',
     ],
