@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Callable, Union
 
 import business_rules.actions as bra
@@ -37,7 +38,7 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
         actions = self._build_action_object()
 
         run_all(
-            rule_list=self._generate_rules(rule_set),
+            rule_list=self._generate_rules(rule_set, data),
             defined_variables=variables(data),
             defined_actions=actions(data),
             stop_on_first_trigger=stop_on_first_trigger
@@ -57,22 +58,35 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
                 self._add_property_getter(Variables, key, brv.numeric_rule_variable)
             elif isinstance(variable, bool):
                 self._add_property_getter(Variables, key, brv.boolean_rule_variable)
+            elif isinstance(variable, list):
+                self._add_property_getter(Variables, key, brv.select_multiple_rule_variable(options=variable))
             else:
-                self._add_property_getter(Variables, key, brv.string_rule_variable)
+                try:
+                    datetime.fromisoformat(variable)
+                    self._add_property_getter(Variables, key, brv.numeric_rule_variable)
+                except (ValueError, TypeError):
+                    try:
+                        float(variable)
+                        self._add_property_getter(Variables, key, brv.numeric_rule_variable)
+                    except (ValueError, TypeError):
+                        self._add_property_getter(Variables, key, brv.string_rule_variable)
 
         self._variable_objects[key] = Variables
 
         return Variables
 
     @staticmethod
-    def _add_property_getter(cls, name: str, variable_type: Callable, options: list = None):
+    def _add_property_getter(cls, name: str, variable_type: Callable):
         def inner(self):
-            return self.data[name]
+            try:
+                return datetime.fromisoformat(self.data[name]).timestamp()
+            except (ValueError, TypeError):
+                try:
+                    return float(self.data[name])
+                except (ValueError, TypeError):
+                    return self.data[name]
         inner.__name__ = name
-        if options is not None:
-            setattr(cls, name, variable_type(inner, options=options))
-        else:
-            setattr(cls, name, variable_type(inner))
+        setattr(cls, name, variable_type(inner))
 
     def _build_action_object(self):
         if self._action_object is not None:
@@ -94,14 +108,14 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
 
         return Actions
 
-    def _generate_rules(self, rule_set: domain.RuleSet):
+    def _generate_rules(self, rule_set: domain.RuleSet, data: dict):
         if rule_set.id in self._rule_sets:
             return self._rule_sets[rule_set.id]
 
         ret = []
 
         for rule in rule_set.rules:
-            x = {'conditions': self._do_generate_rules(rule.conditions), 'actions': []}
+            x = {'conditions': self._do_generate_rules(rule.conditions, data), 'actions': []}
             for cmd in rule.commands:
                 x['actions'].append({
                     'name': 'invoke_command',
@@ -116,7 +130,7 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
 
         return ret
 
-    def _do_generate_rules(self, conditions: domain.ConditionSet):
+    def _do_generate_rules(self, conditions: domain.ConditionSet, data: dict):
         ret = {}
 
         key = 'any'
@@ -126,16 +140,22 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
 
         for condition in conditions.conditions:
             value = condition.value
+
             try:
-                if value.isnumeric():
-                    value = int(value)
-            except AttributeError:
+                value = datetime.fromisoformat(value).timestamp()
+            except (ValueError, TypeError):
                 pass
 
             try:
                 value = float(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
+
+            if condition.operator == 'contains' and \
+                    not isinstance(value, list) and \
+                    isinstance(data[condition.name], list):
+                condition.operator = 'contains_all'
+                value = [value]
 
             ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': value})
         for condition in conditions.sub_conditions:
