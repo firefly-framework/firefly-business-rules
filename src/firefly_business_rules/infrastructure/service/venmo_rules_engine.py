@@ -159,6 +159,6 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
 
             ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': value})
         for condition in conditions.sub_conditions:
-            ret[key].append(self._do_generate_rules(condition))
+            ret[key].append(self._do_generate_rules(condition, data))
 
         return ret
