@@ -152,13 +152,18 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
             except (ValueError, TypeError):
                 pass
 
+            condition_dict = {
+                'name': condition.name,
+                'operator': condition.operator,
+                'value': value
+            }
             if condition.operator == 'contains' and \
                     not isinstance(value, list) and \
                     isinstance(data[condition.name], list):
-                condition.operator = 'contains_all'
-                value = [value]
+                condition_dict['operator'] = 'contains_all'
+                condition_dict['value'] = [value]
 
-            ret[key].append({'name': condition.name, 'operator': condition.operator, 'value': value})
+            ret[key].append(condition_dict)
         for condition in conditions.sub_conditions:
             ret[key].append(self._do_generate_rules(condition, data))
 
