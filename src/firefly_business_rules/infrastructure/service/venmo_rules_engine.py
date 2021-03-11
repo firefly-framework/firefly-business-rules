@@ -101,7 +101,7 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
             @bra.rule_action(params={'command': FIELD_TEXT})
             def invoke_command(self, command: str, params: dict):
                 p = params.copy()
-                p.update(self.data)
+                p['ff_parameters'] = self.data
                 self._system_bus.invoke(command, p)
 
         Actions._system_bus = self._system_bus
