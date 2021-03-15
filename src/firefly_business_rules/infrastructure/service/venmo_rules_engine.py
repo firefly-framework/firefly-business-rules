@@ -32,6 +32,7 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
     _variable_objects: dict = {}
     _action_object: type = None
     _rule_sets: dict = {}
+    _remove_illegal_property_keys: domain.RemoveIllegalPropertyKeys = None
 
     def evaluate_rule_set(self, rule_set: RuleSet, data: dict, stop_on_first_trigger: bool = True):
         variables = self._build_variables_object(data)
@@ -92,6 +93,8 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
         if self._action_object is not None:
             return self._action_object
 
+        this = self
+
         class Actions(bra.BaseActions):
             _system_bus: ff.SystemBus = None
 
@@ -101,7 +104,11 @@ class VenmoRulesEngine(domain.RulesEngine, ff.SystemBusAware):
             @bra.rule_action(params={'command': FIELD_TEXT})
             def invoke_command(self, command: str, params: dict):
                 p = params.copy()
-                p['ff_parameters'] = self.data
+                p.update(self.data)
+                params = this._remove_illegal_property_keys(p)
+                print(p)
+                print(params)
+                p['_additional_properties'] = this._remove_illegal_property_keys(p)
                 self._system_bus.invoke(command, p)
 
         Actions._system_bus = self._system_bus

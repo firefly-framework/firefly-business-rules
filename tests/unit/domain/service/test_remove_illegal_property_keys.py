@@ -12,34 +12,32 @@
 #  You should have received a copy of the GNU General Public License along with Firefly. If not, see
 #  <http://www.gnu.org/licenses/>.
 
-import setuptools
-from setuptools.command.develop import develop
-from setuptools.command.install import install
+from firefly_business_rules.application import Container
+import pytest
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+from firefly_business_rules.domain import RemoveIllegalPropertyKeys
 
 
-setuptools.setup(
-    name='firefly-business-rules',
-    version='0.1.11',
-    author="",
-    author_email="",
-    description="Put project description here.",
-    long_description=long_description,
-    url="",
-    entry_points={
-        'console_scripts': ['firefly=firefly.presentation.cli:main']
-    },
-    install_requires=[
-        'business-rules>=1.0.1',
-        'firefly-dependency-injection>=0.1',
-        'firefly-framework>=1.1.12',
-    ],
-    packages=setuptools.PEP420PackageFinder.find('src'),
-    package_dir={'': 'src'},
-    classifiers=[
-        "Programming Language :: Python :: 3.7",
-        "Operating System :: OS Independent",
-    ]
-)
+def test_remove_illegal_property_keys(sut):
+    data = {
+        'valid_key': 'good',
+        '_valid_key': 'good',
+        'has-dashes': 'bad',
+        '5_number_start': 'bad',
+        '5-with-dashes': 'bad',
+    }
+
+    removed = sut(data)
+    assert 'valid_key' in data
+    assert '_valid_key' in data
+    assert 'has-dashes' not in data
+    assert '5_number_start' not in data
+    assert '5-with-dashes' not in data
+    assert 'has-dashes' in removed
+    assert '5_number_start' in removed
+    assert '5-with-dashes' in removed
+
+
+@pytest.fixture()
+def sut():
+    return Container().mock(RemoveIllegalPropertyKeys)
